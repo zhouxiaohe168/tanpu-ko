@@ -1,51 +1,10 @@
+"use client"
+
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Check } from "lucide-react"
-
-const plans = [
-  {
-    name: "单次查询",
-    price: "9.9",
-    period: "次",
-    description: "适合偶尔查询的用户",
-    features: [
-      "单次完整查询",
-      "空白点发现报告",
-      "周边配套分析",
-      "基础 AI 评分"
-    ],
-    popular: false
-  },
-  {
-    name: "月卡会员",
-    price: "199",
-    period: "月",
-    description: "适合频繁选址的品牌",
-    features: [
-      "无限次查询",
-      "高级 AI 研判报告",
-      "竞品动态监控",
-      "数据导出功能",
-      "优先客服支持"
-    ],
-    popular: true
-  },
-  {
-    name: "年卡会员",
-    price: "1499",
-    period: "年",
-    description: "最高性价比选择",
-    features: [
-      "月卡全部功能",
-      "历史数据回溯",
-      "多品牌对比分析",
-      "定制化报告",
-      "1 对 1 选址顾问",
-      "API 接口支持"
-    ],
-    popular: false
-  }
-]
+import { PRODUCTS } from "@/lib/products"
 
 export function Pricing() {
   return (
@@ -61,32 +20,33 @@ export function Pricing() {
         </div>
 
         <div className="mx-auto grid max-w-5xl gap-6 md:grid-cols-3">
-          {plans.map((plan, index) => (
+          {PRODUCTS.map((product) => (
             <Card 
-              key={index} 
+              key={product.id} 
               className={`relative flex flex-col ${
-                plan.popular 
+                product.popular 
                   ? "border-primary bg-card shadow-lg ring-2 ring-primary" 
                   : "border-border/50 bg-card"
               }`}
             >
-              {plan.popular && (
+              {product.popular && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-accent px-4 py-1 text-xs font-semibold text-accent-foreground">
                   最受欢迎
                 </div>
               )}
               <CardHeader className="text-center">
-                <CardTitle className="text-xl text-card-foreground">{plan.name}</CardTitle>
-                <CardDescription>{plan.description}</CardDescription>
+                <CardTitle className="text-xl text-card-foreground">{product.name}</CardTitle>
+                <CardDescription>{product.description}</CardDescription>
               </CardHeader>
               <CardContent className="flex-1">
                 <div className="mb-6 text-center">
-                  <span className="text-sm text-muted-foreground">¥</span>
-                  <span className="text-4xl font-bold text-foreground">{plan.price}</span>
-                  <span className="text-muted-foreground">/{plan.period}</span>
+                  <span className="text-4xl font-bold text-foreground">{product.priceDisplay}</span>
+                  <span className="text-muted-foreground">
+                    /{product.type === 'one_time' ? '次' : product.type === 'monthly' ? '月' : '年'}
+                  </span>
                 </div>
                 <ul className="space-y-3">
-                  {plan.features.map((feature, i) => (
+                  {product.features.map((feature, i) => (
                     <li key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Check className="h-4 w-4 flex-shrink-0 text-primary" />
                       <span>{feature}</span>
@@ -97,12 +57,15 @@ export function Pricing() {
               <CardFooter>
                 <Button 
                   className={`w-full ${
-                    plan.popular 
+                    product.popular 
                       ? "bg-primary text-primary-foreground hover:bg-primary/90" 
                       : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
                   }`}
+                  asChild
                 >
-                  {plan.price === "9.9" ? "立即购买" : "开通会员"}
+                  <Link href={`/checkout/${product.id}`}>
+                    {product.type === 'one_time' ? '立即购买' : '开通会员'}
+                  </Link>
                 </Button>
               </CardFooter>
             </Card>

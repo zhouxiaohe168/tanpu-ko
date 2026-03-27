@@ -21,10 +21,16 @@ export function Header() {
         {/* Desktop Navigation */}
         <nav className="hidden items-center gap-6 md:flex">
           <Link 
-            href="/query" 
+            href="/free" 
             className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             免费查询
+          </Link>
+          <Link 
+            href="/query" 
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            选址查询
           </Link>
           <Link 
             href="/#pricing" 
@@ -56,11 +62,18 @@ export function Header() {
         <div className="border-t border-border/40 bg-background md:hidden">
           <nav className="container mx-auto flex flex-col gap-4 px-4 py-4">
             <Link 
-              href="/query" 
+              href="/free" 
               className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
               onClick={() => setMobileMenuOpen(false)}
             >
               免费查询
+            </Link>
+            <Link 
+              href="/query" 
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              选址查询
             </Link>
             <Link 
               href="/#pricing" 
