@@ -78,17 +78,17 @@ export function Footer() {
             <h3 className="mb-4 text-sm font-semibold text-foreground">法律条款</h3>
             <ul className="space-y-3 text-sm text-muted-foreground">
               <li>
-                <Link href="#" className="transition-colors hover:text-foreground">
+                <Link href="/terms" className="transition-colors hover:text-foreground">
                   服务条款
                 </Link>
               </li>
               <li>
-                <Link href="#" className="transition-colors hover:text-foreground">
+                <Link href="/privacy" className="transition-colors hover:text-foreground">
                   隐私政策
                 </Link>
               </li>
               <li>
-                <Link href="#" className="transition-colors hover:text-foreground">
+                <Link href="/refund" className="transition-colors hover:text-foreground">
                   退款政策
                 </Link>
               </li>
