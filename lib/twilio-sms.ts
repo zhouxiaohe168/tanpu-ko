@@ -1,54 +1,46 @@
 "use server"
 
-// Twilio 短信服务
+// Twilio Verify API - 专门用于发送验证码
+// 无需购买号码，自动处理国际短信合规
 // 注册地址：https://www.twilio.com/try-twilio
-// 价格：中国大陆约 $0.05/条，香港约 $0.04/条
 
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN
-const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER // 你的 Twilio 号码
+const TWILIO_VERIFY_SERVICE_SID = process.env.TWILIO_VERIFY_SERVICE_SID
 
 export interface SendSmsResult {
   success: boolean
-  messageId?: string
+  status?: string
   error?: string
 }
 
-export async function sendSmsCode(
-  phone: string,
-  code: string
-): Promise<SendSmsResult> {
-  if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
-    console.error("Twilio 配置缺失")
+// 使用 Twilio Verify 发送验证码
+export async function sendVerifyCode(phone: string): Promise<SendSmsResult> {
+  if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_VERIFY_SERVICE_SID) {
+    console.error("Twilio Verify 配置缺失")
     return { success: false, error: "短信服务未配置" }
   }
 
   // 格式化手机号（确保有国际区号）
   let formattedPhone = phone.replace(/\s+/g, "")
   if (!formattedPhone.startsWith("+")) {
-    // 默认中国大陆
     formattedPhone = "+86" + formattedPhone.replace(/^0/, "")
   }
 
-  const message = `【探铺】您的验证码是：${code}，5分钟内有效。如非本人操作，请忽略。`
-
   try {
     const response = await fetch(
-      `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`,
+      `https://verify.twilio.com/v2/Services/${TWILIO_VERIFY_SERVICE_SID}/Verifications`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
           Authorization:
             "Basic " +
-            Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString(
-              "base64"
-            ),
+            Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString("base64"),
         },
         body: new URLSearchParams({
-          From: TWILIO_PHONE_NUMBER,
           To: formattedPhone,
-          Body: message,
+          Channel: "sms",
         }),
       }
     )
@@ -56,18 +48,63 @@ export async function sendSmsCode(
     const data = await response.json()
 
     if (response.ok) {
-      return { success: true, messageId: data.sid }
+      return { success: true, status: data.status }
     } else {
-      console.error("Twilio 发送失败:", data)
+      console.error("Twilio Verify 发送失败:", data)
       return { success: false, error: data.message || "发送失败" }
     }
   } catch (error) {
-    console.error("Twilio 请求错误:", error)
+    console.error("Twilio Verify 请求错误:", error)
     return { success: false, error: "网络错误" }
   }
 }
 
-// 生成6位数字验证码
+// 使用 Twilio Verify 验证码校验
+export async function checkVerifyCode(
+  phone: string,
+  code: string
+): Promise<SendSmsResult> {
+  if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_VERIFY_SERVICE_SID) {
+    return { success: false, error: "短信服务未配置" }
+  }
+
+  let formattedPhone = phone.replace(/\s+/g, "")
+  if (!formattedPhone.startsWith("+")) {
+    formattedPhone = "+86" + formattedPhone.replace(/^0/, "")
+  }
+
+  try {
+    const response = await fetch(
+      `https://verify.twilio.com/v2/Services/${TWILIO_VERIFY_SERVICE_SID}/VerificationCheck`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization:
+            "Basic " +
+            Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString("base64"),
+        },
+        body: new URLSearchParams({
+          To: formattedPhone,
+          Code: code,
+        }),
+      }
+    )
+
+    const data = await response.json()
+
+    if (response.ok && data.status === "approved") {
+      return { success: true, status: "approved" }
+    } else {
+      return { success: false, error: "验证码错误或已过期" }
+    }
+  } catch (error) {
+    console.error("Twilio Verify 校验错误:", error)
+    return { success: false, error: "网络错误" }
+  }
+}
+
+// 生成6位数字验证码（备用，Verify API 自动生成）
 export function generateCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString()
 }

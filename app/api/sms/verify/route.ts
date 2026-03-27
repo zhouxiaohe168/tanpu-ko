@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { checkVerifyCode } from "@/lib/twilio-sms"
 import { createClient } from "@/lib/supabase/server"
 
 export async function POST(request: Request) {
@@ -9,33 +10,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: "手机号和验证码不能为空" }, { status: 400 })
     }
 
+    // 格式化手机号
+    let formattedPhone = phone.replace(/\s+/g, "")
+    if (!formattedPhone.startsWith("+")) {
+      formattedPhone = "+86" + formattedPhone.replace(/^0/, "")
+    }
+
+    // 使用 Twilio Verify 验证码校验
+    const result = await checkVerifyCode(formattedPhone, code)
+
+    if (!result.success) {
+      return NextResponse.json({ success: false, message: result.error || "验证码错误" }, { status: 400 })
+    }
+
+    // 验证成功，使用手机号作为邮箱创建或登录用户
     const supabase = await createClient()
-    const cleanPhone = phone.replace(/\s+/g, "")
-
-    // 从数据库验证验证码
-    const { data: smsCode, error: fetchError } = await supabase
-      .from("sms_codes")
-      .select("*")
-      .eq("phone", cleanPhone)
-      .eq("code", code)
-      .single()
-
-    if (fetchError || !smsCode) {
-      return NextResponse.json({ success: false, message: "验证码错误" }, { status: 400 })
-    }
-
-    // 检查是否过期
-    if (new Date(smsCode.expires_at) < new Date()) {
-      await supabase.from("sms_codes").delete().eq("phone", cleanPhone)
-      return NextResponse.json({ success: false, message: "验证码已过期" }, { status: 400 })
-    }
-
-    // 验证成功，删除验证码
-    await supabase.from("sms_codes").delete().eq("phone", cleanPhone)
-
-    // 使用手机号作为邮箱创建或登录用户
-    const email = `${cleanPhone}@tanpu.phone`
-    const password = `tanpu_${cleanPhone}_${process.env.SUPABASE_JWT_SECRET?.slice(0, 8) || "secret"}`
+    const email = `${formattedPhone.replace("+", "")}@tanpu.phone`
+    const password = `tanpu_${formattedPhone}_${process.env.SUPABASE_JWT_SECRET?.slice(0, 8) || "secret"}`
 
     // 先尝试登录
     const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
@@ -58,8 +49,8 @@ export async function POST(request: Request) {
         password,
         options: {
           data: {
-            phone: cleanPhone,
-            name: `用户${cleanPhone.slice(-4)}`,
+            phone: formattedPhone,
+            name: `用户${formattedPhone.slice(-4)}`,
           },
         },
       })
