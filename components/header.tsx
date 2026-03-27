@@ -1,9 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
 import { MapPin, Menu, X } from "lucide-react"
 import { useState } from "react"
+import { UserNav } from "@/components/user-nav"
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -34,13 +34,8 @@ export function Header() {
           </Link>
         </nav>
 
-        <div className="hidden items-center gap-3 md:flex">
-          <Button variant="ghost" size="sm">
-            登录
-          </Button>
-          <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">
-            免费试用
-          </Button>
+        <div className="hidden md:flex">
+          <UserNav />
         </div>
 
         {/* Mobile Menu Button */}
@@ -74,13 +69,8 @@ export function Header() {
             >
               会员价格
             </Link>
-            <div className="flex flex-col gap-2 pt-2">
-              <Button variant="ghost" size="sm" className="justify-start">
-                登录
-              </Button>
-              <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">
-                免费试用
-              </Button>
+            <div className="pt-2">
+              <UserNav />
             </div>
           </nav>
         </div>

@@ -6,31 +6,18 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Slider } from "@/components/ui/slider"
-import { Search, Store, Users, MapPin, CircleDot } from "lucide-react"
-import { useState } from "react"
+import { Search, Store, Users, MapPin, CircleDot, Loader2 } from "lucide-react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import useSWR from "swr"
 
-const brands = [
-  { value: "mixue", label: "蜜雪冰城" },
-  { value: "guming", label: "古茗" },
-  { value: "wallace", label: "华莱士" },
-  { value: "chagee", label: "霸王茶姬" },
-  { value: "luckin", label: "瑞幸咖啡" },
-  { value: "chabaidao", label: "茶百道" },
-  { value: "nayuki", label: "奈雪的茶" },
-  { value: "heytea", label: "喜茶" },
-]
+interface Brand {
+  id: string
+  name: string
+  category: string
+}
 
-const competitors = [
-  { id: "chagee", label: "霸王茶姬" },
-  { id: "luckin", label: "瑞幸" },
-  { id: "chabaidao", label: "茶百道" },
-  { id: "guming", label: "古茗" },
-  { id: "mixue", label: "蜜雪冰城" },
-  { id: "nayuki", label: "奈雪的茶" },
-  { id: "heytea", label: "喜茶" },
-  { id: "starbucks", label: "星巴克" },
-]
+const fetcher = (url: string) => fetch(url).then(res => res.json())
 
 const cities = [
   { value: "beijing", label: "北京" },
@@ -56,6 +43,10 @@ export function QueryForm() {
   const [selectedCompetitors, setSelectedCompetitors] = useState<string[]>([])
   const [city, setCity] = useState("")
   const [radius, setRadius] = useState([1000])
+  const [isQuerying, setIsQuerying] = useState(false)
+
+  // 从数据库获取品牌列表
+  const { data: brands, isLoading: brandsLoading } = useSWR<Brand[]>("/api/brands", fetcher)
 
   const handleCompetitorChange = (competitorId: string, checked: boolean) => {
     if (checked) {
@@ -70,9 +61,30 @@ export function QueryForm() {
     return option ? option.label : `${value}m`
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (!brand || !city) {
+      alert("请选择品牌和城市")
+      return
+    }
+
+    setIsQuerying(true)
+
+    // 存储查询参数到 sessionStorage，供结果页使用
+    const queryParams = {
+      brand_id: brand,
+      brand_name: brands?.find(b => b.id === brand)?.name || "",
+      competitor_ids: selectedCompetitors,
+      city,
+      city_name: cities.find(c => c.value === city)?.label || "",
+      radius: radius[0],
+    }
+    sessionStorage.setItem("tanpu_query", JSON.stringify(queryParams))
+
     router.push("/results")
   }
+
+  // 过滤掉已选品牌的竞品列表
+  const competitorList = brands?.filter(b => b.id !== brand) || []
 
   return (
     <Card className="h-fit border-border/50 bg-card shadow-sm">
@@ -89,14 +101,14 @@ export function QueryForm() {
             <Store className="h-4 w-4 text-muted-foreground" />
             我要开的品牌
           </Label>
-          <Select value={brand} onValueChange={setBrand}>
+          <Select value={brand} onValueChange={setBrand} disabled={brandsLoading}>
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="选择品牌..." />
+              <SelectValue placeholder={brandsLoading ? "加载中..." : "选择品牌..."} />
             </SelectTrigger>
             <SelectContent>
-              {brands.map((b) => (
-                <SelectItem key={b.value} value={b.value}>
-                  {b.label}
+              {brands?.map((b) => (
+                <SelectItem key={b.id} value={b.id}>
+                  {b.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -110,21 +122,28 @@ export function QueryForm() {
             参考竞品（可多选）
           </Label>
           <div className="grid grid-cols-2 gap-2">
-            {competitors.map((competitor) => (
-              <label
-                key={competitor.id}
-                className="flex cursor-pointer items-center gap-2 rounded-md border border-border/50 p-2.5 transition-colors hover:bg-muted/50 has-[input:checked]:border-primary has-[input:checked]:bg-primary/5"
-              >
-                <Checkbox
-                  id={competitor.id}
-                  checked={selectedCompetitors.includes(competitor.id)}
-                  onCheckedChange={(checked) => 
-                    handleCompetitorChange(competitor.id, checked as boolean)
-                  }
-                />
-                <span className="text-sm text-foreground">{competitor.label}</span>
-              </label>
-            ))}
+            {brandsLoading ? (
+              <div className="col-span-2 flex items-center justify-center py-4 text-sm text-muted-foreground">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                加载品牌...
+              </div>
+            ) : (
+              competitorList.map((competitor) => (
+                <label
+                  key={competitor.id}
+                  className="flex cursor-pointer items-center gap-2 rounded-md border border-border/50 p-2.5 transition-colors hover:bg-muted/50 has-[input:checked]:border-primary has-[input:checked]:bg-primary/5"
+                >
+                  <Checkbox
+                    id={competitor.id}
+                    checked={selectedCompetitors.includes(competitor.id)}
+                    onCheckedChange={(checked) => 
+                      handleCompetitorChange(competitor.id, checked as boolean)
+                    }
+                  />
+                  <span className="text-sm text-foreground">{competitor.name}</span>
+                </label>
+              ))
+            )}
           </div>
         </div>
 
@@ -179,9 +198,19 @@ export function QueryForm() {
           onClick={handleSubmit}
           className="w-full bg-primary text-primary-foreground hover:bg-primary/90" 
           size="lg"
+          disabled={isQuerying || !brand || !city}
         >
-          <Search className="mr-2 h-5 w-5" />
-          开始查询
+          {isQuerying ? (
+            <>
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              查询中...
+            </>
+          ) : (
+            <>
+              <Search className="mr-2 h-5 w-5" />
+              开始查询
+            </>
+          )}
         </Button>
       </CardContent>
     </Card>
