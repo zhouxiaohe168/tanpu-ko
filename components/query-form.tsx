@@ -6,29 +6,13 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Slider } from "@/components/ui/slider"
-import { Search, Store, Users, MapPin, CircleDot, Loader2 } from "lucide-react"
-import { useState, useEffect } from "react"
+import { Input } from "@/components/ui/input"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Search, Store, Users, MapPin, CircleDot, Loader2, Building2, Navigation } from "lucide-react"
+import { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import useSWR from "swr"
-
-interface Brand {
-  id: string
-  name: string
-  category: string
-}
-
-const fetcher = (url: string) => fetch(url).then(res => res.json())
-
-const cities = [
-  { value: "beijing", label: "北京" },
-  { value: "shanghai", label: "上海" },
-  { value: "guangzhou", label: "广州" },
-  { value: "shenzhen", label: "深圳" },
-  { value: "hangzhou", label: "杭州" },
-  { value: "chengdu", label: "成都" },
-  { value: "wuhan", label: "武汉" },
-  { value: "nanjing", label: "南京" },
-]
+import { industries, getBrandsByIndustry, getCrossIndustryBrands, type Brand } from "@/lib/data/industries"
+import { getChildRegions, businessDistricts, getRegionPath } from "@/lib/data/regions"
 
 const radiusOptions = [
   { value: 500, label: "500m" },
@@ -39,14 +23,83 @@ const radiusOptions = [
 
 export function QueryForm() {
   const router = useRouter()
+  
+  // 行业和品牌
+  const [industry, setIndustry] = useState("")
   const [brand, setBrand] = useState("")
+  const [customBrand, setCustomBrand] = useState("")
+  
+  // 竞品选择
+  const [competitorTab, setCompetitorTab] = useState("same")
   const [selectedCompetitors, setSelectedCompetitors] = useState<string[]>([])
+  
+  // 地址选择
+  const [province, setProvince] = useState("")
   const [city, setCity] = useState("")
+  const [district, setDistrict] = useState("")
+  const [street, setStreet] = useState("")
+  const [customLocation, setCustomLocation] = useState("")
+  
+  // 搜索半径
   const [radius, setRadius] = useState([1000])
   const [isQuerying, setIsQuerying] = useState(false)
 
-  // 从数据库获取品牌列表
-  const { data: brands, isLoading: brandsLoading } = useSWR<Brand[]>("/api/brands", fetcher)
+  // 根据行业获取品牌列表
+  const brandList = useMemo(() => {
+    if (!industry) return []
+    return getBrandsByIndustry(industry)
+  }, [industry])
+
+  // 同行业竞品
+  const sameIndustryCompetitors = useMemo(() => {
+    if (!industry) return []
+    return getBrandsByIndustry(industry).filter(b => b.id !== brand)
+  }, [industry, brand])
+
+  // 跨行业竞品
+  const crossIndustryCompetitors = useMemo(() => {
+    if (!industry) return []
+    return getCrossIndustryBrands(industry)
+  }, [industry])
+
+  // 地址级联数据
+  const provinces = getChildRegions()
+  const cities = useMemo(() => province ? getChildRegions(province) : [], [province])
+  const districts = useMemo(() => city ? getChildRegions(city) : [], [city])
+  const streets = useMemo(() => district ? getChildRegions(district) : [], [district])
+  const availableDistricts = useMemo(() => street ? (businessDistricts[street] || []) : [], [street])
+
+  const handleIndustryChange = (value: string) => {
+    setIndustry(value)
+    setBrand("")
+    setSelectedCompetitors([])
+  }
+
+  const handleProvinceChange = (value: string) => {
+    setProvince(value)
+    setCity("")
+    setDistrict("")
+    setStreet("")
+    setCustomLocation("")
+  }
+
+  const handleCityChange = (value: string) => {
+    setCity(value)
+    setDistrict("")
+    setStreet("")
+    setCustomLocation("")
+  }
+
+  const handleDistrictChange = (value: string) => {
+    setDistrict(value)
+    setStreet("")
+    setCustomLocation("")
+  }
+
+  const handleStreetChange = (value: string) => {
+    setStreet(value)
+    setCustomLocation("")
+  }
 
   const handleCompetitorChange = (competitorId: string, checked: boolean) => {
     if (checked) {
@@ -62,20 +115,32 @@ export function QueryForm() {
   }
 
   const handleSubmit = async () => {
-    if (!brand || !city) {
-      alert("请选择品牌和城市")
+    const selectedBrand = brand || customBrand
+    if (!selectedBrand || !district) {
+      alert("请选择品牌和地址")
       return
     }
 
     setIsQuerying(true)
 
-    // 存储查询参数到 sessionStorage，供结果页使用
+    const brandName = brand 
+      ? brandList.find(b => b.id === brand)?.name || brand
+      : customBrand
+    
+    const locationPath = getRegionPath(street || district)
+
     const queryParams = {
-      brand_id: brand,
-      brand_name: brands?.find(b => b.id === brand)?.name || "",
+      industry,
+      industry_name: industries.find(i => i.id === industry)?.name || "",
+      brand_id: brand || "custom",
+      brand_name: brandName,
       competitor_ids: selectedCompetitors,
+      province,
       city,
-      city_name: cities.find(c => c.value === city)?.label || "",
+      district,
+      street,
+      location_path: locationPath.join(" > "),
+      custom_location: customLocation,
       radius: radius[0],
     }
     sessionStorage.setItem("tanpu_query", JSON.stringify(queryParams))
@@ -83,8 +148,7 @@ export function QueryForm() {
     router.push("/results")
   }
 
-  // 过滤掉已选品牌的竞品列表
-  const competitorList = brands?.filter(b => b.id !== brand) || []
+  const canSubmit = (brand || customBrand) && district
 
   return (
     <Card className="h-fit border-border/50 bg-card shadow-sm">
@@ -94,81 +158,210 @@ export function QueryForm() {
           选址查询
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Brand Selection */}
+      <CardContent className="space-y-5">
+        {/* 行业选择 */}
+        <div className="space-y-2">
+          <Label className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <Building2 className="h-4 w-4 text-muted-foreground" />
+            选择行业
+          </Label>
+          <Select value={industry} onValueChange={handleIndustryChange}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="选择行业类型..." />
+            </SelectTrigger>
+            <SelectContent>
+              {industries.map((ind) => (
+                <SelectItem key={ind.id} value={ind.id}>
+                  {ind.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* 品牌选择 */}
         <div className="space-y-2">
           <Label className="flex items-center gap-2 text-sm font-medium text-foreground">
             <Store className="h-4 w-4 text-muted-foreground" />
             我要开的品牌
           </Label>
-          <Select value={brand} onValueChange={setBrand} disabled={brandsLoading}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder={brandsLoading ? "加载中..." : "选择品牌..."} />
-            </SelectTrigger>
-            <SelectContent>
-              {brands?.map((b) => (
-                <SelectItem key={b.id} value={b.id}>
-                  {b.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {industry ? (
+            <div className="space-y-2">
+              <Select value={brand} onValueChange={setBrand}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="选择品牌..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {brandList.map((b) => (
+                    <SelectItem key={b.id} value={b.id}>
+                      {b.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="relative">
+                <Input
+                  placeholder="或输入其他品牌名称..."
+                  value={customBrand}
+                  onChange={(e) => {
+                    setCustomBrand(e.target.value)
+                    if (e.target.value) setBrand("")
+                  }}
+                  className="pr-8"
+                />
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground py-2">请先选择行业</p>
+          )}
         </div>
 
-        {/* Competitor Selection */}
-        <div className="space-y-3">
-          <Label className="flex items-center gap-2 text-sm font-medium text-foreground">
-            <Users className="h-4 w-4 text-muted-foreground" />
-            参考竞品（可多选）
-          </Label>
-          <div className="grid grid-cols-2 gap-2">
-            {brandsLoading ? (
-              <div className="col-span-2 flex items-center justify-center py-4 text-sm text-muted-foreground">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                加载品牌...
-              </div>
-            ) : (
-              competitorList.map((competitor) => (
-                <label
-                  key={competitor.id}
-                  className="flex cursor-pointer items-center gap-2 rounded-md border border-border/50 p-2.5 transition-colors hover:bg-muted/50 has-[input:checked]:border-primary has-[input:checked]:bg-primary/5"
-                >
-                  <Checkbox
-                    id={competitor.id}
-                    checked={selectedCompetitors.includes(competitor.id)}
-                    onCheckedChange={(checked) => 
-                      handleCompetitorChange(competitor.id, checked as boolean)
-                    }
-                  />
-                  <span className="text-sm text-foreground">{competitor.name}</span>
-                </label>
-              ))
+        {/* 竞品选择 */}
+        {industry && (brand || customBrand) && (
+          <div className="space-y-3">
+            <Label className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <Users className="h-4 w-4 text-muted-foreground" />
+              参考竞品
+            </Label>
+            <Tabs value={competitorTab} onValueChange={setCompetitorTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="same" className="text-xs">同行业</TabsTrigger>
+                <TabsTrigger value="cross" className="text-xs">跨行业</TabsTrigger>
+              </TabsList>
+              <TabsContent value="same" className="mt-3">
+                <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto">
+                  {sameIndustryCompetitors.map((competitor) => (
+                    <label
+                      key={competitor.id}
+                      className="flex cursor-pointer items-center gap-2 rounded-md border border-border/50 p-2 transition-colors hover:bg-muted/50 has-[input:checked]:border-primary has-[input:checked]:bg-primary/5"
+                    >
+                      <Checkbox
+                        checked={selectedCompetitors.includes(competitor.id)}
+                        onCheckedChange={(checked) => 
+                          handleCompetitorChange(competitor.id, checked as boolean)
+                        }
+                      />
+                      <span className="text-xs text-foreground truncate">{competitor.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </TabsContent>
+              <TabsContent value="cross" className="mt-3">
+                <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto">
+                  {crossIndustryCompetitors.slice(0, 12).map((competitor) => (
+                    <label
+                      key={competitor.id}
+                      className="flex cursor-pointer items-center gap-2 rounded-md border border-border/50 p-2 transition-colors hover:bg-muted/50 has-[input:checked]:border-primary has-[input:checked]:bg-primary/5"
+                    >
+                      <Checkbox
+                        checked={selectedCompetitors.includes(competitor.id)}
+                        onCheckedChange={(checked) => 
+                          handleCompetitorChange(competitor.id, checked as boolean)
+                        }
+                      />
+                      <span className="text-xs text-foreground truncate">{competitor.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </TabsContent>
+            </Tabs>
+            {selectedCompetitors.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                已选 {selectedCompetitors.length} 个竞品
+              </p>
             )}
           </div>
-        </div>
+        )}
 
-        {/* City Selection */}
-        <div className="space-y-2">
+        {/* 地址选择 */}
+        <div className="space-y-3">
           <Label className="flex items-center gap-2 text-sm font-medium text-foreground">
             <MapPin className="h-4 w-4 text-muted-foreground" />
-            城市
+            选择地址
           </Label>
-          <Select value={city} onValueChange={setCity}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="选择城市..." />
-            </SelectTrigger>
-            <SelectContent>
-              {cities.map((c) => (
-                <SelectItem key={c.value} value={c.value}>
-                  {c.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="grid grid-cols-2 gap-2">
+            {/* 省 */}
+            <Select value={province} onValueChange={handleProvinceChange}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="省份" />
+              </SelectTrigger>
+              <SelectContent>
+                {provinces.map((p) => (
+                  <SelectItem key={p.code} value={p.code}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {/* 市 */}
+            <Select value={city} onValueChange={handleCityChange} disabled={!province}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="城市" />
+              </SelectTrigger>
+              <SelectContent>
+                {cities.map((c) => (
+                  <SelectItem key={c.code} value={c.code}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {/* 区 */}
+            <Select value={district} onValueChange={handleDistrictChange} disabled={!city}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="区/县" />
+              </SelectTrigger>
+              <SelectContent>
+                {districts.map((d) => (
+                  <SelectItem key={d.code} value={d.code}>
+                    {d.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {/* 街道 */}
+            <Select value={street} onValueChange={handleStreetChange} disabled={!district}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="街道" />
+              </SelectTrigger>
+              <SelectContent>
+                {streets.map((s) => (
+                  <SelectItem key={s.code} value={s.code}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {/* 商圈或自定义地址 */}
+          {street && (
+            <div className="space-y-2">
+              {availableDistricts.length > 0 ? (
+                <Select value={customLocation} onValueChange={setCustomLocation}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="选择商圈（可选）" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableDistricts.map((d) => (
+                      <SelectItem key={d} value={d}>
+                        {d}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  placeholder="输入具体地址或商圈（可选）"
+                  value={customLocation}
+                  onChange={(e) => setCustomLocation(e.target.value)}
+                />
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Radius Slider */}
-        <div className="space-y-4">
+        {/* 搜索半径 */}
+        <div className="space-y-3">
           <Label className="flex items-center justify-between text-sm font-medium text-foreground">
             <span className="flex items-center gap-2">
               <CircleDot className="h-4 w-4 text-muted-foreground" />
@@ -193,12 +386,12 @@ export function QueryForm() {
           </div>
         </div>
 
-        {/* Submit Button */}
+        {/* 提交按钮 */}
         <Button 
           onClick={handleSubmit}
           className="w-full bg-primary text-primary-foreground hover:bg-primary/90" 
           size="lg"
-          disabled={isQuerying || !brand || !city}
+          disabled={isQuerying || !canSubmit}
         >
           {isQuerying ? (
             <>
@@ -207,8 +400,8 @@ export function QueryForm() {
             </>
           ) : (
             <>
-              <Search className="mr-2 h-5 w-5" />
-              开始查询
+              <Navigation className="mr-2 h-5 w-5" />
+              开始探铺
             </>
           )}
         </Button>

@@ -1,14 +1,17 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Header } from "@/components/header"
 import { LocationCard } from "@/components/location-card"
 import { MapContainer } from "@/components/map-container"
 import { DetailsPanel } from "@/components/details-panel"
+import { Paywall, BlurredContent } from "@/components/paywall"
+import { MobileNav } from "@/components/mobile-nav"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Filter, Download, SlidersHorizontal } from "lucide-react"
+import { ArrowLeft, Filter, Download, SlidersHorizontal, Crown, Loader2 } from "lucide-react"
 import Link from "next/link"
+import { useUserAccess, checkFeatureAccess } from "@/hooks/use-user-access"
 
 // Mock data
 const mockLocations = [
@@ -122,14 +125,32 @@ export default function ResultsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [detailsExpanded, setDetailsExpanded] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
+  const [showUpgradeWall, setShowUpgradeWall] = useState(false)
+  
+  const { isLoading, isLoggedIn, isPremium, canQuery, remainingQueries, maxQueries, profile } = useUserAccess()
+
+  // 免费用户只能看前2个结果
+  const visibleLocations = isPremium ? mockLocations : mockLocations.slice(0, 2)
+  const lockedLocations = isPremium ? [] : mockLocations.slice(2)
 
   const handleCardClick = (id: string) => {
+    // 检查是否是锁定的位置
+    const isLocked = lockedLocations.some(loc => loc.id === id)
+    if (isLocked) {
+      setShowUpgradeWall(true)
+      return
+    }
+    
     setSelectedId(id)
     setShowDetails(true)
     setDetailsExpanded(false)
   }
 
   const handleViewDetails = () => {
+    if (!isLoggedIn) {
+      // 未登录用户提示登录
+      return
+    }
     setShowDetails(true)
     setDetailsExpanded(true)
   }
@@ -137,6 +158,26 @@ export default function ResultsPage() {
   const handleCloseDetails = () => {
     setShowDetails(false)
     setDetailsExpanded(false)
+  }
+
+  const handleAiAnalysis = () => {
+    const membershipType = profile?.membership_type || "free"
+    if (!checkFeatureAccess(membershipType, "ai_analysis")) {
+      setShowUpgradeWall(true)
+      return
+    }
+    // TODO: 实现 AI 研判功能
+    alert("AI 研判功能开发中...")
+  }
+
+  const handleExport = () => {
+    const membershipType = profile?.membership_type || "free"
+    if (!checkFeatureAccess(membershipType, "export")) {
+      setShowUpgradeWall(true)
+      return
+    }
+    // TODO: 实现导出功能
+    alert("导出功能开发中...")
   }
 
   // Prepare markers for map
@@ -147,6 +188,36 @@ export default function ResultsPage() {
     lat: loc.lat,
     lng: loc.lng
   }))
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  // 未登录且已用完免费次数
+  if (!isLoggedIn && !canQuery) {
+    return (
+      <>
+        <Paywall type="login" />
+      </>
+    )
+  }
+
+  // 已登录但查询次数用完
+  if (isLoggedIn && !canQuery) {
+    return (
+      <>
+        <Paywall 
+          type="limit" 
+          currentCount={maxQueries - remainingQueries}
+          maxCount={maxQueries}
+        />
+      </>
+    )
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -159,7 +230,7 @@ export default function ResultsPage() {
             <Link href="/query">
               <Button variant="ghost" size="sm" className="gap-1">
                 <ArrowLeft className="h-4 w-4" />
-                返回查询
+                <span className="hidden sm:inline">返回查询</span>
               </Button>
             </Link>
             <div className="hidden h-6 w-px bg-border md:block" />
@@ -167,21 +238,32 @@ export default function ResultsPage() {
               <Badge variant="secondary" className="bg-primary/10 text-primary">
                 蜜雪冰城
               </Badge>
-              <span className="text-sm text-muted-foreground">北京市</span>
-              <span className="text-sm text-muted-foreground">·</span>
-              <span className="text-sm text-muted-foreground">搜索半径 1km</span>
+              <span className="hidden text-sm text-muted-foreground sm:inline">北京市</span>
+              <span className="hidden text-sm text-muted-foreground sm:inline">·</span>
+              <span className="text-sm text-muted-foreground">1km</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-1.5">
+            {!isPremium && (
+              <Badge variant="outline" className="gap-1 border-amber-500/50 text-amber-600">
+                <Crown className="h-3 w-3" />
+                {remainingQueries}/{maxQueries} 次
+              </Badge>
+            )}
+            <Button variant="outline" size="sm" className="gap-1.5 hidden sm:flex">
               <Filter className="h-4 w-4" />
-              <span className="hidden sm:inline">筛选</span>
+              筛选
             </Button>
-            <Button variant="outline" size="sm" className="gap-1.5">
+            <Button variant="outline" size="sm" className="gap-1.5 hidden sm:flex">
               <SlidersHorizontal className="h-4 w-4" />
-              <span className="hidden sm:inline">排序</span>
+              排序
             </Button>
-            <Button variant="outline" size="sm" className="gap-1.5">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-1.5"
+              onClick={handleExport}
+            >
               <Download className="h-4 w-4" />
               <span className="hidden sm:inline">导出</span>
             </Button>
@@ -189,20 +271,26 @@ export default function ResultsPage() {
         </div>
       </div>
 
-      <main className="flex flex-1 flex-col lg:flex-row">
-        {/* Results List - Left side on desktop, top on mobile */}
+      <main className="flex flex-1 flex-col pb-20 md:pb-0 lg:flex-row">
+        {/* Results List */}
         <aside className="w-full shrink-0 border-b border-border/40 bg-card/30 lg:w-96 lg:border-b-0 lg:border-r xl:w-[420px]">
           <div className="sticky top-0 z-10 border-b border-border/40 bg-card/95 px-4 py-3 backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <h2 className="font-medium text-foreground">
                 发现 <span className="text-primary">{mockLocations.length}</span> 个空白点
+                {!isPremium && (
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    (显示前 {visibleLocations.length} 个)
+                  </span>
+                )}
               </h2>
               <span className="text-xs text-muted-foreground">按评分排序</span>
             </div>
           </div>
           <div className={`overflow-y-auto p-4 ${showDetails ? "max-h-[300px] lg:max-h-[calc(100vh-220px)]" : "max-h-[400px] lg:max-h-[calc(100vh-160px)]"}`}>
             <div className="space-y-3">
-              {mockLocations.map((location) => (
+              {/* 可见的结果 */}
+              {visibleLocations.map((location) => (
                 <LocationCard
                   key={location.id}
                   id={location.id}
@@ -213,14 +301,43 @@ export default function ResultsPage() {
                   isSelected={selectedId === location.id}
                   onClick={() => handleCardClick(location.id)}
                   onViewDetails={handleViewDetails}
-                  onAiAnalysis={() => alert("AI 研判功能开发中...")}
+                  onAiAnalysis={handleAiAnalysis}
                 />
               ))}
+              
+              {/* 锁定的结果 (模糊显示) */}
+              {lockedLocations.length > 0 && (
+                <>
+                  <div className="relative mt-4">
+                    <div className="absolute inset-x-0 -top-2 flex items-center justify-center">
+                      <Badge className="gap-1 bg-gradient-to-r from-amber-500 to-orange-500">
+                        <Crown className="h-3 w-3" />
+                        升级解锁更多
+                      </Badge>
+                    </div>
+                  </div>
+                  {lockedLocations.map((location) => (
+                    <BlurredContent key={location.id} blur={true}>
+                      <LocationCard
+                        id={location.id}
+                        name={location.name}
+                        grade={location.grade}
+                        score={location.score}
+                        competitors={location.competitors}
+                        isSelected={false}
+                        onClick={() => handleCardClick(location.id)}
+                        onViewDetails={() => setShowUpgradeWall(true)}
+                        onAiAnalysis={() => setShowUpgradeWall(true)}
+                      />
+                    </BlurredContent>
+                  ))}
+                </>
+              )}
             </div>
           </div>
         </aside>
         
-        {/* Map - Right side on desktop, middle on mobile */}
+        {/* Map */}
         <div className={`flex-1 p-4 ${showDetails ? "pb-20" : ""}`}>
           <MapContainer 
             className="h-[350px] lg:h-full" 
@@ -240,6 +357,19 @@ export default function ResultsPage() {
           location={mockLocationDetails}
         />
       )}
+
+      {/* Upgrade Paywall */}
+      {showUpgradeWall && (
+        <div onClick={() => setShowUpgradeWall(false)}>
+          <Paywall 
+            type="upgrade" 
+            title="升级会员查看完整数据"
+            description="解锁全部选址结果、AI研判和数据导出功能"
+          />
+        </div>
+      )}
+
+      <MobileNav />
     </div>
   )
 }

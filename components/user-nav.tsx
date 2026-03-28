@@ -16,7 +16,11 @@ import {
 import { User, LogOut, Settings, CreditCard, History } from "lucide-react"
 import type { User as SupabaseUser } from "@supabase/supabase-js"
 
-export function UserNav() {
+interface UserNavProps {
+  compact?: boolean
+}
+
+export function UserNav({ compact = false }: UserNavProps) {
   const [user, setUser] = useState<SupabaseUser | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
@@ -24,13 +28,11 @@ export function UserNav() {
   useEffect(() => {
     const supabase = createClient()
     
-    // 获取当前用户
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user)
       setLoading(false)
     })
 
-    // 监听认证状态变化
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
     })
@@ -47,10 +49,59 @@ export function UserNav() {
 
   if (loading) {
     return (
-      <div className="h-9 w-20 animate-pulse rounded-md bg-muted" />
+      <div className={compact ? "h-8 w-8 animate-pulse rounded-full bg-muted" : "h-9 w-20 animate-pulse rounded-md bg-muted"} />
     )
   }
 
+  // Compact mode for mobile header
+  if (compact) {
+    if (!user) {
+      return (
+        <Button size="sm" variant="ghost" className="h-8 px-3 text-xs" asChild>
+          <Link href="/auth/login">登录</Link>
+        </Button>
+      )
+    }
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <User className="h-4 w-4" />
+            </div>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel className="font-normal">
+            <div className="flex flex-col space-y-1">
+              <p className="text-sm font-medium">{user.user_metadata?.name || user.email?.split("@")[0]}</p>
+              <p className="text-xs text-muted-foreground">{user.email}</p>
+            </div>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <Link href="/account" className="cursor-pointer">
+              <Settings className="mr-2 h-4 w-4" />
+              账户设置
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/account/subscription" className="cursor-pointer">
+              <CreditCard className="mr-2 h-4 w-4" />
+              会员订阅
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive">
+            <LogOut className="mr-2 h-4 w-4" />
+            退出登录
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    )
+  }
+
+  // Desktop mode
   if (!user) {
     return (
       <div className="flex items-center gap-3">
@@ -73,7 +124,7 @@ export function UserNav() {
           <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary">
             <User className="h-4 w-4" />
           </div>
-          <span className="hidden md:inline">{displayName}</span>
+          <span>{displayName}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
