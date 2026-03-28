@@ -1,5 +1,3 @@
-"use server"
-
 // Twilio Verify API - 专门用于发送验证码
 // 无需购买号码，自动处理国际短信合规
 // 注册地址：https://www.twilio.com/try-twilio
