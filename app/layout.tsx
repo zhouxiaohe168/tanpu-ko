@@ -9,8 +9,8 @@ const notoSansSC = Noto_Sans_SC({
 });
 
 export const metadata: Metadata = {
-  title: '探铺 - 连锁品牌智能选址',
-  description: '连锁品牌智能选址，一键发现黄金空白点',
+  title: '探铺 - 连锁品牌智能选址 | tanpuai.com',
+  description: '连锁品牌智能选址，一键发现黄金空白点。支持奶茶、咖啡等行业品牌选址分析。',
   generator: 'v0.app',
   icons: {
     icon: [
