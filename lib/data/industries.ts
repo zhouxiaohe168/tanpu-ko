@@ -11,6 +11,7 @@ export interface Brand {
   industryId: string
 }
 
+// 目前只支持奶茶行业
 export const industries: Industry[] = [
   {
     id: "milk-tea",
@@ -26,8 +27,14 @@ export const industries: Industry[] = [
       { id: "coco", name: "CoCo都可", industryId: "milk-tea" },
       { id: "shuyi", name: "书亦烧仙草", industryId: "milk-tea" },
       { id: "chayan", name: "茶颜悦色", industryId: "milk-tea" },
+      { id: "tianlala", name: "甜啦啦", industryId: "milk-tea" },
+      { id: "yinong", name: "益禾堂", industryId: "milk-tea" },
     ],
   },
+]
+
+// 跨行业品类（用于竞品分析）
+export const crossIndustryCategories: Industry[] = [
   {
     id: "coffee",
     name: "咖啡",
@@ -37,8 +44,6 @@ export const industries: Industry[] = [
       { id: "manner", name: "Manner咖啡", industryId: "coffee" },
       { id: "mstand", name: "M Stand", industryId: "coffee" },
       { id: "tims", name: "Tims天好咖啡", industryId: "coffee" },
-      { id: "pacific", name: "太平洋咖啡", industryId: "coffee" },
-      { id: "costa", name: "Costa咖啡", industryId: "coffee" },
       { id: "kudi", name: "库迪咖啡", industryId: "coffee" },
     ],
   },
@@ -51,23 +56,7 @@ export const industries: Industry[] = [
       { id: "juewei", name: "绝味鸭脖", industryId: "fast-food" },
       { id: "mcdonald", name: "麦当劳", industryId: "fast-food" },
       { id: "kfc", name: "肯德基", industryId: "fast-food" },
-      { id: "dicos", name: "德克士", industryId: "fast-food" },
       { id: "tastien", name: "塔斯汀", industryId: "fast-food" },
-      { id: "laoxiang", name: "老乡鸡", industryId: "fast-food" },
-      { id: "xiangcun", name: "乡村基", industryId: "fast-food" },
-      { id: "yonghe", name: "永和大王", industryId: "fast-food" },
-    ],
-  },
-  {
-    id: "hotpot",
-    name: "火锅烧烤",
-    brands: [
-      { id: "haidilao", name: "海底捞", industryId: "hotpot" },
-      { id: "xiabuxiabu", name: "呷哺呷哺", industryId: "hotpot" },
-      { id: "bajiudi", name: "巴奴毛肚火锅", industryId: "hotpot" },
-      { id: "xiaolongkan", name: "小龙坎", industryId: "hotpot" },
-      { id: "tanlada", name: "谭鸭血", industryId: "hotpot" },
-      { id: "shuxiang", name: "蜀香火锅", industryId: "hotpot" },
     ],
   },
   {
@@ -75,52 +64,42 @@ export const industries: Industry[] = [
     name: "烘焙甜点",
     brands: [
       { id: "85c", name: "85度C", industryId: "bakery" },
-      { id: "breadtalk", name: "面包新语", industryId: "bakery" },
       { id: "holiland", name: "好利来", industryId: "bakery" },
       { id: "yuanzu", name: "元祖", industryId: "bakery" },
-      { id: "paris", name: "巴黎贝甜", industryId: "bakery" },
       { id: "wedome", name: "味多美", industryId: "bakery" },
     ],
   },
   {
     id: "convenience",
-    name: "便利店零售",
+    name: "便利店",
     brands: [
       { id: "711", name: "7-Eleven", industryId: "convenience" },
       { id: "familymart", name: "全家", industryId: "convenience" },
       { id: "lawson", name: "罗森", industryId: "convenience" },
       { id: "meiyijia", name: "美宜佳", industryId: "convenience" },
-      { id: "tianfu", name: "天福便利", industryId: "convenience" },
-    ],
-  },
-  {
-    id: "noodle",
-    name: "面食小吃",
-    brands: [
-      { id: "lanzhou", name: "兰州拉面", industryId: "noodle" },
-      { id: "shaxian", name: "沙县小吃", industryId: "noodle" },
-      { id: "mianwu", name: "面五", industryId: "noodle" },
-      { id: "hejia", name: "和府捞面", industryId: "noodle" },
-      { id: "mazilu", name: "马子禄", industryId: "noodle" },
-      { id: "wunai", name: "五爷拌面", industryId: "noodle" },
     ],
   },
 ]
 
-// 获取所有品牌
+// 获取奶茶行业所有品牌
+export function getMilkTeaBrands(): Brand[] {
+  return industries[0].brands
+}
+
+// 获取跨行业品类
+export function getCrossIndustryCategories(): Industry[] {
+  return crossIndustryCategories
+}
+
+// 根据品类ID获取品牌
+export function getBrandsByCategory(categoryId: string): Brand[] {
+  const category = crossIndustryCategories.find((c) => c.id === categoryId)
+  return category?.brands || []
+}
+
+// 获取所有品牌（包括跨行业）
 export function getAllBrands(): Brand[] {
-  return industries.flatMap((industry) => industry.brands)
-}
-
-// 根据行业获取品牌
-export function getBrandsByIndustry(industryId: string): Brand[] {
-  const industry = industries.find((i) => i.id === industryId)
-  return industry?.brands || []
-}
-
-// 获取跨行业品牌（排除指定行业）
-export function getCrossIndustryBrands(excludeIndustryId: string): Brand[] {
-  return industries
-    .filter((i) => i.id !== excludeIndustryId)
-    .flatMap((i) => i.brands)
+  const milkTeaBrands = industries.flatMap((i) => i.brands)
+  const crossBrands = crossIndustryCategories.flatMap((c) => c.brands)
+  return [...milkTeaBrands, ...crossBrands]
 }
