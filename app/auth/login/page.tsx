@@ -138,10 +138,13 @@ export default function LoginPage() {
                   <TabsTrigger value="password" className="gap-1">
                     <Mail className="h-4 w-4" />账号密码
                   </TabsTrigger>
-                  <TabsTrigger value="phone" className="gap-1">
+                  <TabsTrigger value="phone" className="gap-1 opacity-40 cursor-not-allowed" disabled>
                     <Phone className="h-4 w-4" />短信验证
                   </TabsTrigger>
                 </TabsList>
+                <p className="text-center text-xs text-muted-foreground mb-4">
+                  🔧 短信登录暂时维护中，请使用账号密码登录
+                </p>
 
                 <TabsContent value="password">
                   <form onSubmit={handlePasswordLogin}>

@@ -98,7 +98,7 @@ export function Footer() {
 
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border/40 pt-8 md:flex-row">
           <p className="text-sm text-muted-foreground">
-            © 2024 探铺. 保留所有权利.
+            © 2026 探铺. 保留所有权利.
           </p>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <Link href="#" className="transition-colors hover:text-foreground">
