@@ -41,8 +41,7 @@ export function Hero() {
 
           {/* Subtitle */}
           <p className="mx-auto mb-10 max-w-2xl text-pretty text-lg text-muted-foreground md:text-xl">
-            基于海量 POI 数据与 AI 算法，为连锁品牌提供精准选址建议，
-            快速识别竞品空白区域，降低选址风险。
+            {"基于海量 POI 数据与 AI 算法，为连锁品牌提供精准选址建议，快速识别竞品空白区域，降低选址风险。"}
           </p>
 
           {/* Search Box */}
