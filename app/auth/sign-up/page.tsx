@@ -149,7 +149,7 @@ export default function SignUpPage() {
     router.refresh()
   }
 
-  // 密码注册
+  // 密码注册 - 注册后直接登录，无需邮件验证
   const handlePasswordSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -162,21 +162,17 @@ export default function SignUpPage() {
     }
 
     const supabase = createClient()
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ||
-          `${window.location.origin}/query`,
-        data: {
-          name,
-        },
+        data: { name },
       },
     })
 
     if (error) {
       if (error.message.includes("already registered")) {
-        setError("该邮箱已被注册")
+        setError("该邮箱已被注册，请直接登录")
       } else {
         setError(error.message)
       }
@@ -184,6 +180,14 @@ export default function SignUpPage() {
       return
     }
 
+    // 注册成功后直接登录
+    if (data.session) {
+      router.push("/query")
+      router.refresh()
+      return
+    }
+
+    // 如果 Supabase 仍需邮件确认，则跳到成功页
     router.push("/auth/sign-up-success")
   }
 
@@ -227,16 +231,19 @@ export default function SignUpPage() {
                 setCodeSent(false)
                 setVerificationCode("")
               }}>
-                <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsList className="grid w-full grid-cols-2 mb-1">
                   <TabsTrigger value="email" className="gap-1">
                     <Mail className="h-4 w-4" />
                     邮箱注册
                   </TabsTrigger>
-                  <TabsTrigger value="phone" className="gap-1">
+                  <TabsTrigger value="phone" className="gap-1 opacity-40 cursor-not-allowed" disabled>
                     <Phone className="h-4 w-4" />
                     手机注册
                   </TabsTrigger>
                 </TabsList>
+                <p className="text-center text-xs text-muted-foreground mb-4">
+                  手机注册暂时维护中，请使用邮箱注册
+                </p>
 
                 <TabsContent value="email">
                   <form onSubmit={codeSent ? handleVerifyCode : handlePasswordSignUp}>

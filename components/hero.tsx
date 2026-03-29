@@ -32,7 +32,7 @@ export function Hero() {
         <div className="mx-auto max-w-4xl text-center">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
             <Sparkles className="h-4 w-4" />
-            <span>{"\u AI \u9a71\u52a8\u7684\u667a\u80fd\u9009\u5740\u5e73\u53f0"}</span>
+            <span>AI 驱动的智能选址平台</span>
           </div>
 
           <h1 className="mb-6 text-balance text-4xl font-bold tracking-tight text-foreground md:text-5xl lg:text-6xl">
