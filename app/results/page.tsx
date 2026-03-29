@@ -36,7 +36,7 @@ function ResultsContent() {
   const [showUpgradeWall, setShowUpgradeWall] = useState(false)
   const [queryStats, setQueryStats] = useState<{ brand_stores: number; competitor_stores: number } | null>(null)
 
-  const { isLoading, isLoggedIn, isPremium, canQuery, remainingQueries, maxQueries, profile } = useUserAccess()
+  const { isLoading, isLoggedIn, isPremium, canQuery, freeQueryUsed, membershipType, profile } = useUserAccess()
 
   const brand = searchParams.get("brand") || ""
   const city = searchParams.get("city") || ""
@@ -134,7 +134,7 @@ function ResultsContent() {
   }
 
   if (isLoggedIn && !canQuery) {
-    return <Paywall type="limit" currentCount={maxQueries} maxCount={maxQueries} />
+    return <Paywall type="limit" currentCount={1} maxCount={1} />
   }
 
   return (
