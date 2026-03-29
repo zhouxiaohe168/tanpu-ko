@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Lock, Crown, Zap, CheckCircle2, ArrowRight } from "lucide-react"
+import { Lock, Crown, Zap, CheckCircle2, ArrowRight, Loader2 } from "lucide-react"
 import Link from "next/link"
 
 interface PaywallProps {
@@ -12,6 +12,7 @@ interface PaywallProps {
   description?: string
   currentCount?: number
   maxCount?: number
+  isLoading?: boolean
 }
 
 export function Paywall({ 
@@ -19,8 +20,17 @@ export function Paywall({
   title, 
   description,
   currentCount = 0,
-  maxCount = 3 
+  maxCount = 3,
+  isLoading = false
 }: PaywallProps) {
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
   if (type === "login") {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">

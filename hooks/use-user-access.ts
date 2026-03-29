@@ -72,21 +72,18 @@ export function useUserAccess(): UserAccess {
   useEffect(() => {
     const supabase = createClient()
 
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      const user = session?.user ?? null
       setUser(user)
-      if (user) {
-        await fetchProfile(user.id)
-      }
+      if (user) await fetchProfile(user.id)
       setIsLoading(false)
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        await fetchProfile(session.user.id)
-      } else {
-        setProfile(null)
-      }
+      const user = session?.user ?? null
+      setUser(user)
+      if (user) await fetchProfile(user.id)
+      else { setProfile(null); setIsLoading(false) }
     })
 
     return () => subscription.unsubscribe()

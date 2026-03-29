@@ -129,6 +129,10 @@ function ResultsContent() {
     )
   }
 
+  if (isLoading) {
+    return <Paywall type="login" isLoading={true} />
+  }
+
   if (!isLoggedIn) {
     return <Paywall type="login" />
   }
