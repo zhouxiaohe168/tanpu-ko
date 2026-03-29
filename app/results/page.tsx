@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Filter, Download, SlidersHorizontal, Crown, Loader2, AlertCircle } from "lucide-react"
 import Link from "next/link"
-import { useUserAccess, checkFeatureAccess } from "@/hooks/use-user-access"
+import { createClient } from "@/lib/supabase/client"
+import type { User } from "@supabase/supabase-js"
 
 interface Location {
   id: string
@@ -36,7 +37,28 @@ function ResultsContent() {
   const [showUpgradeWall, setShowUpgradeWall] = useState(false)
   const [queryStats, setQueryStats] = useState<{ brand_stores: number; competitor_stores: number } | null>(null)
 
-  const { isLoading, isLoggedIn, isPremium, canQuery, freeQueryUsed, membershipType, profile } = useUserAccess()
+  const [user, setUser] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const supabase = createClient()
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
+      setIsLoading(false)
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+      setIsLoading(false)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const isLoggedIn = !!user
+  const isPremium = false
+  const canQuery = isLoggedIn
 
   const brand = searchParams.get("brand") || ""
   const city = searchParams.get("city") || ""

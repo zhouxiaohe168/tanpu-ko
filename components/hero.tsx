@@ -2,7 +2,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { MapPin, ArrowRight } from "lucide-react"
 
-export function Hero() {
+export default function Hero() {
   return (
     <section className="relative overflow-hidden bg-background py-20 md:py-28">
       <div className="container mx-auto px-4">
